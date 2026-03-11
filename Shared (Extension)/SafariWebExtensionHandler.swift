@@ -1,15 +1,7 @@
-//
-//  SafariWebExtensionHandler.swift
-//  Shared (Extension)
-//
-//  Created by Jordan Christensen on 3/11/26.
-//
-
 import SafariServices
 import os.log
 
 class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
-
     func beginRequest(with context: NSExtensionContext) {
         let request = context.inputItems.first as? NSExtensionItem
 
