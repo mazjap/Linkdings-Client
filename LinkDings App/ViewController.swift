@@ -1,5 +1,18 @@
 import WebKit
 
+// API info:
+// Headers:
+// Authorization: Bearer <token>
+// Content-Type: application/json
+// Endpoints:
+// get /api - returns an empty json object
+// get /api/bookmarks - returns a list of all bookmarks as a json object
+// get /api/bookmarks/<id> - returns the bookmark with the specified id as a json object
+// get /api/bookmarks/<id>/assets - returns the assets associated with the bookmark with the provided id (No idea what an asset is in this context 🤷‍♂️)
+
+// get /api/tags - tags
+// get /api/tags/<id> - single tag with id
+
 #if os(iOS)
 import UIKit
 typealias PlatformViewController = UIViewController
