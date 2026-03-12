@@ -2,8 +2,6 @@ import SafariServices
 import os.log
 
 class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
-    private let appGroupID = "group.com.mazjap.LinkDings-Client"
-
     func beginRequest(with context: NSExtensionContext) {
         let request = context.inputItems.first as? NSExtensionItem
         let message = request?.userInfo?[SFExtensionMessageKey] as? [String: Any]
@@ -15,15 +13,16 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
         switch type {
         case "checkSetup":
-            let defaults = UserDefaults(suiteName: appGroupID)
-            let configured = defaults?.string(forKey: "instanceURL") != nil
-                          && defaults?.string(forKey: "apiKey") != nil
+            let defaults = UserDefaults.appGroup
+            let configured = defaults.string(forKey: "instanceURL") != nil
+                          && defaults.string(forKey: "apiKey") != nil
             respond(context, with: ["configured": configured])
 
         case "saveBookmark":
+            let defaults = UserDefaults.appGroup
+            
             guard
                 let urlString = message?["url"] as? String,
-                let defaults = UserDefaults(suiteName: appGroupID),
                 let instanceURLString = defaults.string(forKey: "instanceURL"),
                 let instanceURL = URL(string: instanceURLString),
                 let apiKey = defaults.string(forKey: "apiKey")

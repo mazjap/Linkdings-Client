@@ -1,22 +1,18 @@
 import Foundation
 
 enum KeychainHelper {
-    static let appGroupID = "group.com.mazjap.LinkDings-Client"
     private static let instanceURLKey = "instanceURL"
     private static let apiKeyKey = "apiKey"
-
-    private static var defaults: UserDefaults? {
-        UserDefaults(suiteName: appGroupID)
-    }
+    private static let defaults = UserDefaults.appGroup
 
     static var instanceURL: String? {
-        get { defaults?.string(forKey: instanceURLKey) }
-        set { defaults?.set(newValue, forKey: instanceURLKey) }
+        get { defaults.string(forKey: instanceURLKey) }
+        set { defaults.set(newValue, forKey: instanceURLKey) }
     }
 
     static var apiKey: String? {
-        get { defaults?.string(forKey: apiKeyKey) }
-        set { defaults?.set(newValue, forKey: apiKeyKey) }
+        get { defaults.string(forKey: apiKeyKey) }
+        set { defaults.set(newValue, forKey: apiKeyKey) }
     }
 
     static var isConfigured: Bool {
@@ -31,7 +27,7 @@ enum KeychainHelper {
     }
 
     static func clear() {
-        defaults?.removeObject(forKey: instanceURLKey)
-        defaults?.removeObject(forKey: apiKeyKey)
+        defaults.removeObject(forKey: instanceURLKey)
+        defaults.removeObject(forKey: apiKeyKey)
     }
 }
