@@ -2,10 +2,54 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="popup.css">
-    <script type="module" src="popup.js"></script>
 </head>
 <body>
-    <strong>Hello World!</strong>
+    <div id="loading" class="center">
+        <div class="spinner"></div>
+    </div>
+
+    <div id="not-configured" class="center hidden">
+        <p class="message">Open the <strong>LinkDings</strong> app and add your instance URL and API key to get started.</p>
+    </div>
+
+    <div id="main" class="hidden">
+        <form id="bookmark-form">
+            <div class="field">
+                <label for="url">URL</label>
+                <input type="url" id="url" name="url" required>
+            </div>
+            <div class="field">
+                <label for="title">Title</label>
+                <input type="text" id="title" name="title" placeholder="Optional">
+            </div>
+            <div class="field">
+                <label for="description">Description</label>
+                <input type="text" id="description" name="description" placeholder="Optional">
+            </div>
+            <div class="field">
+                <label for="tags">Tags</label>
+                <input type="text" id="tags" name="tags" placeholder="space-separated">
+            </div>
+            <div class="options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="unread"> Mark as unread
+                </label>
+            </div>
+            <div id="error" class="error hidden"></div>
+            <button type="submit" id="save-btn">Save Bookmark</button>
+        </form>
+    </div>
+
+    <div id="success" class="center hidden">
+        <svg class="checkmark" viewBox="0 0 52 52">
+            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+            <path class="checkmark-check" fill="none" d="M14 27 l7 7 l16-16"/>
+        </svg>
+        <p class="message">Saved!</p>
+    </div>
+
+    <script type="module" src="popup.js"></script>
 </body>
 </html>

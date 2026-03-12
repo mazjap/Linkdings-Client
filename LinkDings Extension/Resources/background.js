@@ -1,6 +1,7 @@
-browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log("Received request: ", request);
+const APP_BUNDLE_ID = "com.mazjap.LinkDings-Client";
 
-    if (request.greeting === "hello")
-        return Promise.resolve({ farewell: "goodbye" });
+browser.runtime.onMessage.addListener((message, sender) => {
+    if (message.type === "checkSetup" || message.type === "saveBookmark") {
+        return browser.runtime.sendNativeMessage(APP_BUNDLE_ID, message);
+    }
 });
