@@ -2,19 +2,18 @@ import SwiftUI
 
 struct SettingsView: View {
     @Binding private var showSettings: Bool
-    private let isInitialSetup: Bool
-
+    private let isInitialSetup = !KeychainHelper.isConfigured
+    
     @State private var instanceURL = ""
     @State private var apiKey = ""
     @State private var isTesting = false
     @State private var testResult: String? = nil
     @State private var testSuccess = false
     
-    init(showSettings: Binding<Bool>, isInitialSetup: Bool) {
+    init(showSettings: Binding<Bool>) {
         self._showSettings = showSettings
-        self.isInitialSetup = isInitialSetup
     }
-
+    
     var body: some View {
         NavigationStack {
             Form {
@@ -26,7 +25,7 @@ struct SettingsView: View {
                 } footer: {
                     Text("The base URL of your Linkding instance.")
                 }
-
+                
                 Section {
                     SecureField("API Token", text: $apiKey)
                         .noAutocapitalization()
@@ -35,7 +34,7 @@ struct SettingsView: View {
                 } footer: {
                     Text("Found in Linkding under Settings → Integrations → REST API.")
                 }
-
+                
                 Section {
                     Button {
                         Task { await testConnection() }
@@ -52,14 +51,14 @@ struct SettingsView: View {
                         }
                     }
                     .disabled(instanceURL.isEmpty || apiKey.isEmpty || isTesting)
-
+                    
                     if let result = testResult {
                         Text(result)
                             .font(.caption)
                             .foregroundStyle(testSuccess ? .green : .red)
                     }
                 }
-
+                
                 Section {
                     Button("Save") { save() }
                         .disabled(instanceURL.isEmpty || apiKey.isEmpty)
@@ -75,13 +74,14 @@ struct SettingsView: View {
             }
             .onAppear { loadExisting() }
         }
+        .interactiveDismissDisabled()
     }
-
+    
     private func loadExisting() {
         instanceURL = KeychainHelper.instanceURL ?? ""
         apiKey = KeychainHelper.apiKey ?? ""
     }
-
+    
     private func testConnection() async {
         var urlString = instanceURL.trimmingCharacters(in: .whitespacesAndNewlines)
         if urlString.hasSuffix("/") { urlString = String(urlString.dropLast()) }
@@ -98,12 +98,11 @@ struct SettingsView: View {
             testResult = "Connected successfully"
             testSuccess = true
         } catch {
-            testResult = error.localizedDescription
             testSuccess = false
         }
         isTesting = false
     }
-
+    
     private func save() {
         var urlString = instanceURL.trimmingCharacters(in: .whitespacesAndNewlines)
         if urlString.hasSuffix("/") { urlString = String(urlString.dropLast()) }

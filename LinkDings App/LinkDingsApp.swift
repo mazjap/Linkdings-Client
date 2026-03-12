@@ -8,7 +8,7 @@ import SwiftData
 // Sort by unread first
 // js popup is not centered
 // Mark as unread should default to true (in js popup and app)
-// If bookmark is already saved, alert user that this will replace the old bookmark
+// If bookmark is already saved, alert user that adding this bookmark will replace the old bookmark (from safari extension)
 // When editing/creating bookmark, list all current tags, with option to create new
 
 @main
