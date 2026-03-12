@@ -60,12 +60,12 @@ struct BookmarkListView: View {
             }
             .navigationTitle("Bookmarks")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItem {
                     Button { showAdd = true } label: {
                         Image(systemName: "plus")
                     }
                 }
-                ToolbarItem(placement: .secondaryAction) {
+                ToolbarItem {
                     Menu {
                         Picker("Sort", selection: $sort) {
                             ForEach(BookmarkSort.allCases, id: \.self) {
@@ -77,7 +77,7 @@ struct BookmarkListView: View {
                     }
                 }
                 if !availableTags.isEmpty {
-                    ToolbarItem(placement: .secondaryAction) {
+                    ToolbarItem {
                         Menu {
                             Button("All Tags") { selectedTag = nil }
                             Divider()
@@ -97,7 +97,16 @@ struct BookmarkListView: View {
                         }
                     }
                 }
-                ToolbarItem(placement: .secondaryAction) {
+                
+                #if DEBUG
+                ToolbarItem {
+                    Button { KeychainHelper.clear() } label: {
+                        Image(systemName: "eraser.fill")
+                    }
+                }
+                #endif
+                
+                ToolbarItem {
                     Button { showSettings = true } label: {
                         Image(systemName: "gear")
                     }
@@ -125,6 +134,13 @@ struct BookmarkListView: View {
             .sheet(item: $editTarget) { bookmark in
                 AddEditBookmarkView(mode: .edit(bookmark)) {
                     Task { await fetchBookmarks() }
+                }
+            }
+        }
+        .onChange(of: showSettings) {
+            if !showSettings {
+                Task {
+                    await fetchBookmarks()
                 }
             }
         }

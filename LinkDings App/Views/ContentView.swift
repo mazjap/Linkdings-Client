@@ -1,20 +1,15 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var isConfigured = KeychainHelper.isConfigured
-    @State private var showSettings = false
+    @State private var showSettings = !KeychainHelper.isConfigured
 
     var body: some View {
-        if isConfigured && !showSettings {
-            BookmarkListView(showSettings: $showSettings)
-                .onChange(of: showSettings) { _, showing in
-                    if !showing { isConfigured = KeychainHelper.isConfigured }
-                }
-        } else {
-            SettingsView(showSettings: $showSettings, isInitialSetup: !isConfigured)
-                .onChange(of: showSettings) { _, showing in
-                    if !showing { isConfigured = KeychainHelper.isConfigured }
-                }
+        Group {
+            if KeychainHelper.isConfigured && !showSettings {
+                BookmarkListView(showSettings: $showSettings)
+            } else {
+                SettingsView(showSettings: $showSettings, isInitialSetup: !KeychainHelper.isConfigured)
+            }
         }
     }
 }

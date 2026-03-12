@@ -1,14 +1,19 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @Binding var showSettings: Bool
-    let isInitialSetup: Bool
+    @Binding private var showSettings: Bool
+    private let isInitialSetup: Bool
 
     @State private var instanceURL = ""
     @State private var apiKey = ""
     @State private var isTesting = false
     @State private var testResult: String? = nil
     @State private var testSuccess = false
+    
+    init(showSettings: Binding<Bool>, isInitialSetup: Bool) {
+        self._showSettings = showSettings
+        self.isInitialSetup = isInitialSetup
+    }
 
     var body: some View {
         NavigationStack {
