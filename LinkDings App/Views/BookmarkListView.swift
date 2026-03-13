@@ -43,9 +43,13 @@ struct BookmarkListView: View {
         NavigationStack {
             List {
                 ForEach(displayBookmarks) { bookmark in
-                    BookmarkRow(bookmark: bookmark)
-                        .contentShape(Rectangle())
-                        .onTapGesture { editTarget = bookmark }
+                    Button {
+                        editTarget = bookmark
+                    } label: {
+                        BookmarkRow(bookmark: bookmark)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
                 .onDelete { indexSet in
                     Task { await deleteBookmarks(at: indexSet) }
@@ -62,7 +66,7 @@ struct BookmarkListView: View {
             .toolbar {
                 ToolbarItem {
                     Button { showAdd = true } label: {
-                        Image(systemName: "plus")
+                        Label("Add Bookmark", systemImage: "plus")
                     }
                 }
                 ToolbarItem {
@@ -73,7 +77,7 @@ struct BookmarkListView: View {
                             }
                         }
                     } label: {
-                        Image(systemName: "arrow.up.arrow.down")
+                        Label("Sort Bookmarks", systemImage: "arrow.up.arrow.down")
                     }
                 }
                 if !availableTags.isEmpty {
@@ -93,7 +97,7 @@ struct BookmarkListView: View {
                                 }
                             }
                         } label: {
-                            Image(systemName: selectedTag != nil ? "tag.fill" : "tag")
+                            Label("Filter by tag", systemImage: selectedTag != nil ? "tag.fill" : "tag")
                         }
                     }
                 }
@@ -108,7 +112,7 @@ struct BookmarkListView: View {
                 
                 ToolbarItem {
                     Button { showSettings = true } label: {
-                        Image(systemName: "gear")
+                        Label("Settings", systemImage: "gear")
                     }
                 }
             }
@@ -235,7 +239,7 @@ struct TagChipRow: View {
     let tags: [String]
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             HStack(spacing: 4) {
                 ForEach(tags, id: \.self) { tag in
                     Text(tag)
@@ -247,6 +251,7 @@ struct TagChipRow: View {
                 }
             }
         }
+        .scrollIndicators(.hidden)
     }
 }
 

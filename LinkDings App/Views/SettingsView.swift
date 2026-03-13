@@ -44,7 +44,7 @@ struct SettingsView: View {
                             Spacer()
                             if isTesting {
                                 ProgressView()
-                            } else if let _ = testResult {
+                            } else if testResult != nil {
                                 Image(systemName: testSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
                                     .foregroundStyle(testSuccess ? .green : .red)
                             }
@@ -98,6 +98,7 @@ struct SettingsView: View {
             testResult = "Connected successfully"
             testSuccess = true
         } catch {
+            testResult = error.localizedDescription
             testSuccess = false
         }
         isTesting = false

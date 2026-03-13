@@ -103,15 +103,13 @@ enum KeychainHelper {
         
         let status = SecItemAdd(query as CFDictionary, nil)
         
-        while true {
-            switch status {
-            case errSecSuccess:
-                return
-            case errSecDuplicateItem:
-                throw .duplicateItem
-            default:
-                throw .unexpectedStatus(status)
-            }
+        switch status {
+        case errSecSuccess:
+            return
+        case errSecDuplicateItem:
+            throw .duplicateItem
+        default:
+            throw .unexpectedStatus(status)
         }
     }
     

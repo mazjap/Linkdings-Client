@@ -35,7 +35,7 @@ If your instance is on a local network over HTTP, this is supported — no addit
 | App UI             | SwiftUI                       |
 | Local cache        | SwiftData                     |
 | Networking         | URLSession (async/await)      |
-| Credential sharing | App Groups (`UserDefaults`)   |
+| Credential sharing | Keychain                      |
 | Safari extension   | Manifest V3, native messaging |
 
 The Safari extension relays messages from its popup to `SafariWebExtensionHandler` (Swift), which makes all API calls natively. The API token is never exposed to JavaScript.

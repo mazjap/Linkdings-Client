@@ -153,7 +153,9 @@ struct TagPillGrid: View {
                     Button {
                         onRemove(tag)
                     } label: {
-                        Image(systemName: "xmark").font(.caption2)
+                        Label("Remove tag", systemImage: "xmark")
+                            .font(.caption2)
+                            .labelStyle(.iconOnly)
                     }
                 }
                 .padding(.horizontal, 8)
