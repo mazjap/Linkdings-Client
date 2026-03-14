@@ -28,12 +28,19 @@ struct LinkdingAPI {
 
     // MARK: - Request Building
 
-    private func makeRequest(_ path: String, queryItems: [URLQueryItem] = []) -> URLRequest {
-        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: true)!
+    private func makeRequest(_ path: String, queryItems: [URLQueryItem] = []) throws -> URLRequest {
+        let url = baseURL.appending(path: path)
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: true)
+        
         if !queryItems.isEmpty {
-            components.queryItems = queryItems
+            components?.queryItems = queryItems
         }
-        var req = URLRequest(url: components.url!)
+        
+        guard let componentsUrl = components?.url else {
+            throw LinkdingError.invalid​URL(url.absoluteString)
+        }
+        
+        var req = URLRequest(url: componentsUrl)
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         return req
@@ -55,7 +62,7 @@ struct LinkdingAPI {
     }
 
     func createBookmark(_ body: BookmarkRequest) async throws -> Bookmark {
-        var req = makeRequest("api/bookmarks/")
+        var req = try makeRequest("api/bookmarks/")
         req.httpMethod = "POST"
         req.httpBody = try Self.encoder.encode(body)
         let (data, response) = try await URLSession.shared.data(for: req)
@@ -64,7 +71,7 @@ struct LinkdingAPI {
     }
 
     func updateBookmark(id: Int, _ body: BookmarkRequest) async throws -> Bookmark {
-        var req = makeRequest("api/bookmarks/\(id)/")
+        var req = try makeRequest("api/bookmarks/\(id)/")
         req.httpMethod = "PUT"
         req.httpBody = try Self.encoder.encode(body)
         let (data, response) = try await URLSession.shared.data(for: req)
@@ -73,7 +80,7 @@ struct LinkdingAPI {
     }
 
     func deleteBookmark(id: Int) async throws {
-        var req = makeRequest("api/bookmarks/\(id)/")
+        var req = try makeRequest("api/bookmarks/\(id)/")
         req.httpMethod = "DELETE"
         let (_, response) = try await URLSession.shared.data(for: req)
         try validate(response)
@@ -113,11 +120,13 @@ struct LinkdingAPI {
 enum LinkdingError: LocalizedError {
     case httpError(Int)
     case notConfigured
+    case invalid​URL(String)
 
     var errorDescription: String? {
         switch self {
         case .httpError(let code): "Server returned error \(code)"
         case .notConfigured: "Linkding is not configured. Open Settings to add your instance URL and API key."
+        case .invalid​URL(let url): "The provided URL is invalid: \(url)"
         }
     }
 }
