@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import OrderedCollections
 
 enum BookmarkSort: String, CaseIterable {
     case dateAddedNewest = "Newest First"
@@ -8,12 +9,17 @@ enum BookmarkSort: String, CaseIterable {
     case titleZA = "Title Z–A"
 }
 
-struct BookmarkListView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var cachedBookmarks: [CachedBookmark]
-    @Binding var showSettings: Bool
+fileprivate struct ReorderState: Hashable {
+    var sort: BookmarkSort?
+    var selectedTag: String?
+}
 
-    @State private var bookmarks: [Bookmark] = []
+struct BookmarkListView: View {
+    @Environment(\.openURL) private var openURL
+    @Binding var showSettings: Bool
+    
+    @State private var displayBookmarks: [Bookmark] = []
+    @State private var bookmarks: OrderedDictionary<Int, Bookmark> = [:]
     @State private var searchText = ""
     @State private var sort: BookmarkSort = .dateAddedNewest
     @State private var selectedTag: String? = nil
@@ -22,37 +28,28 @@ struct BookmarkListView: View {
     @State private var error: String? = nil
     @State private var showAdd = false
     @State private var editTarget: Bookmark? = nil
-
-    private var displayBookmarks: [Bookmark] {
-        var result = bookmarks
-        if let tag = selectedTag {
-            result = result.filter { $0.tagNames.contains(tag) }
-        }
-        switch sort {
-        case .dateAddedNewest: result.sort { $0.dateAdded > $1.dateAdded }
-        case .dateAddedOldest: result.sort { $0.dateAdded < $1.dateAdded }
-        case .titleAZ:
-            result.sort { $0.displayTitle.localizedCaseInsensitiveCompare($1.displayTitle) == .orderedAscending }
-        case .titleZA:
-            result.sort { $0.displayTitle.localizedCaseInsensitiveCompare($1.displayTitle) == .orderedDescending }
-        }
-        return result
-    }
-
+    
     var body: some View {
         NavigationStack {
             List {
                 ForEach(displayBookmarks) { bookmark in
                     Button {
-                        editTarget = bookmark
+                        openURL(bookmark.url)
                     } label: {
-                        BookmarkRow(bookmark: bookmark)
-                            .contentShape(Rectangle())
+                        BookmarkRow(bookmark: bookmark) {
+                            editTarget = bookmark
+                        } toggleRead: {
+                            Task {
+                                await toggleUnreadStatus(to: !bookmark.unread, forBookmarkWithId: bookmark.bookmarkId)
+                            }
+                        } delete: {
+                            Task {
+                                await deleteBookmark(withId: bookmark.id)
+                            }
+                        }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                }
-                .onDelete { indexSet in
-                    Task { await deleteBookmarks(at: indexSet) }
                 }
             }
             .searchable(text: $searchText, prompt: "Search bookmarks")
@@ -64,57 +61,7 @@ struct BookmarkListView: View {
             }
             .navigationTitle("Bookmarks")
             .toolbar {
-                ToolbarItem {
-                    Button { showAdd = true } label: {
-                        Label("Add Bookmark", systemImage: "plus")
-                    }
-                }
-                ToolbarItem {
-                    Menu {
-                        Picker("Sort", selection: $sort) {
-                            ForEach(BookmarkSort.allCases, id: \.self) {
-                                Text($0.rawValue).tag($0)
-                            }
-                        }
-                    } label: {
-                        Label("Sort Bookmarks", systemImage: "arrow.up.arrow.down")
-                    }
-                }
-                if !availableTags.isEmpty {
-                    ToolbarItem {
-                        Menu {
-                            Button("All Tags") { selectedTag = nil }
-                            Divider()
-                            ForEach(availableTags, id: \.self) { tag in
-                                Button {
-                                    selectedTag = tag
-                                } label: {
-                                    if tag == selectedTag {
-                                        Label(tag, systemImage: "checkmark")
-                                    } else {
-                                        Text(tag)
-                                    }
-                                }
-                            }
-                        } label: {
-                            Label("Filter by tag", systemImage: selectedTag != nil ? "tag.fill" : "tag")
-                        }
-                    }
-                }
-                
-                #if DEBUG
-                ToolbarItem {
-                    Button { KeychainHelper.clear() } label: {
-                        Image(systemName: "eraser.fill")
-                    }
-                }
-                #endif
-                
-                ToolbarItem {
-                    Button { showSettings = true } label: {
-                        Label("Settings", systemImage: "gear")
-                    }
-                }
+                toolbarItems
             }
             .overlay {
                 if isLoading && bookmarks.isEmpty {
@@ -131,13 +78,15 @@ struct BookmarkListView: View {
             .refreshable { await fetchBookmarks() }
             .task { await initialLoad() }
             .sheet(isPresented: $showAdd) {
-                AddEditBookmarkView(mode: .add) {
-                    Task { await fetchBookmarks() }
+                AddEditBookmarkView(mode: .add) { newBookmark in
+                    bookmarks[newBookmark.id] = newBookmark
+                    sortAndFilter()
                 }
             }
             .sheet(item: $editTarget) { bookmark in
-                AddEditBookmarkView(mode: .edit(bookmark)) {
-                    Task { await fetchBookmarks() }
+                AddEditBookmarkView(mode: .edit(bookmark)) { updatedBookmark in
+                    bookmarks[updatedBookmark.id] = updatedBookmark
+                    sortAndFilter()
                 }
             }
         }
@@ -148,82 +97,160 @@ struct BookmarkListView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Data
-
-    private func initialLoad() async {
-        // Show cache immediately while API loads
-        if bookmarks.isEmpty && !cachedBookmarks.isEmpty {
-            bookmarks = cachedBookmarks.map { Bookmark(cache: $0) }
+        .onChange(of: ReorderState(sort: sort, selectedTag: selectedTag)) {
+            sortAndFilter()
         }
+    }
+    
+    @ToolbarContentBuilder
+    private var toolbarItems: some ToolbarContent {
+        ToolbarItem {
+            Button { showAdd = true } label: {
+                Label("Add Bookmark", systemImage: "plus")
+            }
+        }
+        ToolbarItem {
+            Menu {
+                Picker("Sort", selection: $sort) {
+                    ForEach(BookmarkSort.allCases, id: \.self) {
+                        Text($0.rawValue).tag($0)
+                    }
+                }
+            } label: {
+                Label("Sort Bookmarks", systemImage: "arrow.up.arrow.down")
+            }
+        }
+        if !availableTags.isEmpty {
+            ToolbarItem {
+                Menu {
+                    Button("All Tags") { selectedTag = nil }
+                    Divider()
+                    ForEach(availableTags, id: \.self) { tag in
+                        Button {
+                            selectedTag = tag
+                        } label: {
+                            if tag == selectedTag {
+                                Label(tag, systemImage: "checkmark")
+                            } else {
+                                Text(tag)
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Filter by tag", systemImage: selectedTag != nil ? "tag.fill" : "tag")
+                }
+            }
+        }
+        
+        #if DEBUG
+        ToolbarItem {
+            Button { KeychainHelper.clear() } label: {
+                Image(systemName: "eraser.fill")
+            }
+        }
+        #endif
+        
+        ToolbarItem {
+            Button { showSettings = true } label: {
+                Label("Settings", systemImage: "gear")
+            }
+        }
+    }
+    
+    // MARK: - Data
+    
+    private func initialLoad() async {
         await fetchBookmarks()
     }
-
+    
     private func fetchBookmarks() async {
         guard let api = KeychainHelper.makeAPI() else { return }
         isLoading = true
         error = nil
+        
         do {
             let response = try await api.fetchBookmarks(
                 query: searchText.isEmpty ? nil : searchText,
                 limit: 200
             )
-            bookmarks = response.results
+            
+            bookmarks = OrderedDictionary(response.results.map { ($0.bookmarkId, $0) }) { first, _ in first }
             availableTags = Array(Set(response.results.flatMap { $0.tagNames })).sorted()
-            // Only do full cache sync on unfiltered fetch
-            if searchText.isEmpty {
-                syncCache(with: response.results)
-            }
         } catch {
             self.error = error.localizedDescription
         }
         isLoading = false
+        
+        sortAndFilter()
     }
-
-    private func syncCache(with fetched: [Bookmark]) {
-        let existingByID = Dictionary(uniqueKeysWithValues: cachedBookmarks.map { ($0.id, $0) })
-        let fetchedIDs = Set(fetched.map { $0.id })
-        for cached in cachedBookmarks where !fetchedIDs.contains(cached.id) {
-            modelContext.delete(cached)
-        }
-        for bookmark in fetched {
-            if let existing = existingByID[bookmark.id] {
-                existing.update(from: bookmark)
-            } else {
-                modelContext.insert(CachedBookmark(from: bookmark))
-            }
+    
+    private func toggleUnreadStatus(to unread: Bool, forBookmarkWithId id: Int) async {
+        do {
+            guard let api = KeychainHelper.makeAPI() else { return }
+            let bm = try await api.updateBookmarkProperties(id: id, BookmarkPatchRequest(unread: unread))
+            
+            bookmarks[id] = bm
+            sortAndFilter()
+        } catch {
+            assertionFailure("\(error)")
+            self.error = error.localizedDescription
         }
     }
-
-    private func deleteBookmarks(at indexSet: IndexSet) async {
+    
+    private func deleteBookmark(withId id: Int) async {
         guard let api = KeychainHelper.makeAPI() else { return }
-        let toDelete = indexSet.map { displayBookmarks[$0] }
-        for bookmark in toDelete {
-            do {
-                try await api.deleteBookmark(id: bookmark.id)
-                bookmarks.removeAll { $0.id == bookmark.id }
-                if let cached = cachedBookmarks.first(where: { $0.id == bookmark.id }) {
-                    modelContext.delete(cached)
-                }
-            } catch {
-                self.error = error.localizedDescription
-            }
+        
+        do {
+            try await api.deleteBookmark(id: id)
+            bookmarks[id] = nil
+            sortAndFilter()
+        } catch {
+            assertionFailure("\(error)")
+            self.error = error.localizedDescription
         }
+    }
+    
+    private func sortAndFilter() {
+        var result = Array(bookmarks.values)
+        if let tag = selectedTag {
+            result = result.filter { $0.tagNames.contains(tag) }
+        }
+        switch sort {
+        case .dateAddedNewest: result.sort { $0.dateAdded > $1.dateAdded }
+        case .dateAddedOldest: result.sort { $0.dateAdded < $1.dateAdded }
+        case .titleAZ:
+            result.sort { $0.displayTitle.localizedCaseInsensitiveCompare($1.displayTitle) == .orderedAscending }
+        case .titleZA:
+            result.sort { $0.displayTitle.localizedCaseInsensitiveCompare($1.displayTitle) == .orderedDescending }
+        }
+        
+        displayBookmarks = result
     }
 }
 
 // MARK: - Bookmark Row
 
 struct BookmarkRow: View {
-    let bookmark: Bookmark
-
+    @Environment(\.openURL) private var openURL
+    
+    private let bookmark: Bookmark
+    private let makeActive: () -> Void
+    private let toggleRead: () -> Void
+    private let delete: () -> Void
+    
+    init(bookmark: Bookmark, makeActive: @escaping () -> Void, toggleRead: @escaping () -> Void, delete: @escaping () -> Void) {
+        self.bookmark = bookmark
+        self.makeActive = makeActive
+        self.toggleRead = toggleRead
+        self.delete = delete
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(bookmark.displayTitle)
                 .font(.headline)
                 .lineLimit(2)
-            Text(bookmark.url)
+            Text(bookmark.url.absoluteString)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -232,12 +259,51 @@ struct BookmarkRow: View {
             }
         }
         .padding(.vertical, 4)
+        .contextMenu(ContextMenu(menuItems: {
+            Button {
+                makeActive()
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            
+            Button {
+                openURL(bookmark.url)
+            } label: {
+                Label("Open", systemImage: "envelope.open.fill")
+            }
+            
+            Button(role: .destructive) {
+                delete()
+            } label: {
+                Label("Delete", systemImage: "trash.fill")
+            }
+        }))
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                toggleRead()
+            } label: {
+                Label("Mark " + (bookmark.unread ? "read" : "unread"), systemImage: bookmark.unread ? "book.closed.fill" : "book.fill")
+            }
+            
+            Button {
+                makeActive()
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                delete()
+            } label: {
+                Label("Delete", systemImage: "trash.fill")
+            }
+        }
     }
 }
 
 struct TagChipRow: View {
     let tags: [String]
-
+    
     var body: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 4) {
@@ -252,27 +318,5 @@ struct TagChipRow: View {
             }
         }
         .scrollIndicators(.hidden)
-    }
-}
-
-// MARK: - Cache → DTO bridge (for initial offline display)
-
-extension Bookmark {
-    init(cache: CachedBookmark) {
-        self.init(
-            id: cache.id,
-            url: cache.url,
-            title: cache.title,
-            description: cache.bookmarkDescription,
-            notes: cache.notes,
-            websiteTitle: cache.websiteTitle,
-            websiteDescription: nil,
-            isArchived: cache.isArchived,
-            unread: cache.unread,
-            shared: cache.shared,
-            tagNames: cache.tagNames,
-            dateAdded: cache.dateAdded,
-            dateModified: cache.dateModified
-        )
     }
 }

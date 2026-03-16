@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0E11A7BF2F61D00900412855 /* LinkDings Client Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0E11A7BE2F61D00900412855 /* LinkDings Client Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		0EBA0C782F67551D0069BF38 /* OrderedCollections in Frameworks */ = {isa = PBXBuildFile; productRef = 0EBA0C772F67551D0069BF38 /* OrderedCollections */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +91,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0EBA0C782F67551D0069BF38 /* OrderedCollections in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -146,6 +148,7 @@
 			);
 			name = "LinkDings Client";
 			packageProductDependencies = (
+				0EBA0C772F67551D0069BF38 /* OrderedCollections */,
 			);
 			productName = "LinkDings Client (iOS)";
 			productReference = 0E11A7A12F61D00900412855 /* LinkDings Client.app */;
@@ -201,6 +204,9 @@
 			);
 			mainGroup = 0E11A7842F61D00700412855;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0EBA0C762F67551D0069BF38 /* XCRemoteSwiftPackageReference "swift-collections" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0E11A7A22F61D00900412855 /* Products */;
 			projectDirPath = "";
@@ -564,6 +570,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		0EBA0C762F67551D0069BF38 /* XCRemoteSwiftPackageReference "swift-collections" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-collections.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.4.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0EBA0C772F67551D0069BF38 /* OrderedCollections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0EBA0C762F67551D0069BF38 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = OrderedCollections;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 0E11A7852F61D00700412855 /* Project object */;
 }

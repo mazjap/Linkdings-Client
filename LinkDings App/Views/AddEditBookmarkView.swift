@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct AddEditBookmarkView: View {
     enum Mode {
@@ -7,8 +8,8 @@ struct AddEditBookmarkView: View {
     }
 
     let mode: Mode
-    let onSave: () -> Void
-
+    let onSave: (Bookmark) -> Void
+    
     @Environment(\.dismiss) private var dismiss
 
     @State private var url = ""
@@ -92,7 +93,7 @@ struct AddEditBookmarkView: View {
 
     private func populateFields() {
         guard case .edit(let bookmark) = mode else { return }
-        url = bookmark.url
+        url = bookmark.url.absoluteString
         title = bookmark.title
         description = bookmark.description
         notes = bookmark.notes
@@ -111,10 +112,15 @@ struct AddEditBookmarkView: View {
 
     private func save() async {
         guard let api = KeychainHelper.makeAPI() else { return }
+        guard let url = URL(string: url.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            self.error = "Enter a valid URL."
+            return
+        }
+        
         isSaving = true
         error = nil
         let body = BookmarkRequest(
-            url: url.trimmingCharacters(in: .whitespacesAndNewlines),
+            url: url,
             title: title,
             description: description,
             notes: notes,
@@ -123,14 +129,18 @@ struct AddEditBookmarkView: View {
             shared: shared,
             tagNames: tagNames
         )
+        
         do {
+            let modifiedBookmark: Bookmark
+            
             switch mode {
             case .add:
-                _ = try await api.createBookmark(body)
-            case .edit(let bookmark):
-                _ = try await api.updateBookmark(id: bookmark.id, body)
+                modifiedBookmark = try await api.createBookmark(body)
+            case .edit(let oldBookmark):
+                modifiedBookmark = try await api.updateBookmark(id: oldBookmark.bookmarkId, body)
             }
-            onSave()
+            
+            onSave(modifiedBookmark)
             dismiss()
         } catch {
             self.error = error.localizedDescription
